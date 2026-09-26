@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "mode": "conservative",
+  "baseline_date": "2026-09-26",
+  "allowed_root_entries": [
+    ".github",
+    ".gitignore",
+    "README.md",
+    "data",
+    "docs",
+    "execution",
+    "research"
+  ],
+  "conventions": {
+    "root": "Treat the current cleaned root layout as the baseline; new root entries should be intentionally classified.",
+    "naming": "Preserve established repository naming and code paths; prefer descriptive names and avoid accidental copy/download suffixes.",
+    "archive": "Do not create or move material into an archive automatically; structural moves require human review."
+  },
+  "safety": "The workflow may remove only unmistakable OS/editor/cache junk and may extend .gitignore with safe patterns. It never auto-moves or deletes substantive content."
+}
