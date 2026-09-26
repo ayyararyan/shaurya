@@ -1,0 +1,216 @@
+name: Repository Housekeeping
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+      timezone: 'Asia/Kolkata'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: repository-housekeeping
+  cancel-in-progress: false
+
+jobs:
+  housekeeping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Run conservative housekeeping
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import json
+          import os
+          import re
+          import shutil
+
+          root = Path(".")
+          policy_path = root / ".github" / "housekeeping-policy.json"
+          policy = json.loads(policy_path.read_text(encoding="utf-8"))
+          allowed_root = set(policy.get("allowed_root_entries", []))
+          allowed_root.update({".git", ".github", ".gitignore"})
+
+          safe_dir_names = {
+              "__pycache__",
+              ".pytest_cache",
+              ".mypy_cache",
+              ".ruff_cache",
+              ".ipynb_checkpoints",
+          }
+          safe_file_names = {".DS_Store", "Thumbs.db", "desktop.ini"}
+          safe_suffixes = {".pyc", ".pyo", ".swp", ".swo"}
+
+          removed = []
+          candidates = sorted(
+              [p for p in root.rglob("*") if ".git" not in p.parts],
+              key=lambda p: len(p.parts),
+              reverse=True,
+          )
+
+          for path in candidates:
+              if not path.exists():
+                  continue
+              if path.is_dir() and path.name in safe_dir_names:
+                  removed.append(str(path))
+                  shutil.rmtree(path)
+              elif path.is_file():
+                  if (
+                      path.name in safe_file_names
+                      or path.suffix.lower() in safe_suffixes
+                      or path.name.endswith("~")
+                  ):
+                      removed.append(str(path))
+                      path.unlink()
+
+          ignore_patterns = [
+              ".DS_Store",
+              "Thumbs.db",
+              "desktop.ini",
+              "__pycache__/",
+              "*.py[cod]",
+              ".pytest_cache/",
+              ".mypy_cache/",
+              ".ruff_cache/",
+              ".ipynb_checkpoints/",
+              "*.swp",
+              "*.swo",
+              "*~",
+          ]
+          gitignore = root / ".gitignore"
+          existing = gitignore.read_text(encoding="utf-8") if gitignore.exists() else ""
+          lines = existing.splitlines()
+          missing = [p for p in ignore_patterns if p not in lines]
+          if missing:
+              prefix = "" if not existing or existing.endswith("\n") else "\n"
+              block = "# Repository housekeeping\n" + "\n".join(missing) + "\n"
+              gitignore.write_text(existing + prefix + block, encoding="utf-8")
+
+          actual_root = {p.name for p in root.iterdir()}
+          unclassified = sorted(actual_root - allowed_root)
+
+          suspicious_rx = re.compile(
+              r"(\(\d+\)|\bcopy\b|final[-_ ]?final|(?:^|[-_ ])old(?:[-_. ]|$)|\.bak$)",
+              re.IGNORECASE,
+          )
+          suspicious = []
+          for path in root.rglob("*"):
+              if ".git" in path.parts or ".github" in path.parts:
+                  continue
+              if suspicious_rx.search(path.name):
+                  suspicious.append(str(path))
+
+          hashes = {}
+          for path in root.rglob("*"):
+              if not path.is_file() or ".git" in path.parts:
+                  continue
+              if path.parts[:2] == (".github", "workflows"):
+                  continue
+              try:
+                  size = path.stat().st_size
+              except OSError:
+                  continue
+              if size == 0 or size > 20 * 1024 * 1024:
+                  continue
+              h = hashlib.sha256()
+              with path.open("rb") as fh:
+                  for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                      h.update(chunk)
+              hashes.setdefault((h.hexdigest(), size), []).append(str(path))
+
+          duplicate_groups = [
+              paths for paths in hashes.values() if len(paths) > 1
+          ]
+          duplicate_groups.sort(key=lambda g: (-len(g), g[0]))
+
+          summary = []
+          summary.append("# Repository housekeeping")
+          summary.append("")
+          summary.append("Mode: **conservative** — substantive files are never auto-moved or auto-deleted.")
+          summary.append("")
+          summary.append(f"- Safe junk removed: **{len(removed)}**")
+          summary.append(f"- New root entries outside the cleaned baseline: **{len(unclassified)}**")
+          summary.append(f"- Suspicious backup/copy-style names: **{len(suspicious)}**")
+          summary.append(f"- Exact duplicate-content groups found: **{len(duplicate_groups)}**")
+          summary.append("")
+
+          if removed:
+              summary.append("## Safe removals")
+              summary.extend(f"- `{p}`" for p in removed[:50])
+              summary.append("")
+
+          if unclassified:
+              summary.append("## New root entries to classify")
+              summary.append("These are reported only; the workflow does not move them.")
+              summary.extend(f"- `{p}`" for p in unclassified[:50])
+              summary.append("")
+
+          if suspicious:
+              summary.append("## Naming candidates for human review")
+              summary.extend(f"- `{p}`" for p in suspicious[:50])
+              summary.append("")
+
+          if duplicate_groups:
+              summary.append("## Exact duplicate-content candidates")
+              summary.append("Duplicates are reported only; none are deleted automatically.")
+              for group in duplicate_groups[:20]:
+                  summary.append("- " + ", ".join(f"`{p}`" for p in group))
+              summary.append("")
+
+          summary.append("The baseline and conventions live in `.github/housekeeping-policy.json`.")
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              with open(summary_path, "a", encoding="utf-8") as fh:
+                  fh.write("\n".join(summary) + "\n")
+          PY
+
+      - name: Detect safe changes
+        id: changes
+        shell: bash
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish housekeeping branch
+        if: steps.changes.outputs.changed == 'true'
+        shell: bash
+        run: |
+          BRANCH="automation/repository-housekeeping"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C "$BRANCH"
+          git add -A
+          git commit -m "chore: automated repository housekeeping"
+          git push --force origin "HEAD:$BRANCH"
+
+      - name: Open or refresh housekeeping pull request
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          BRANCH="automation/repository-housekeeping"
+          BASE="${{ github.event.repository.default_branch }}"
+          if gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
+            echo "Housekeeping pull request already exists and has been refreshed."
+          else
+            gh pr create \
+              --base "$BASE" \
+              --head "$BRANCH" \
+              --title "chore: automated repository housekeeping" \
+              --body "Daily conservative housekeeping. Only unmistakable OS/editor/cache artifacts and safe ignore rules are changed automatically. Structural or naming suggestions remain review-only in the Actions summary." \
+            || echo "Could not open a PR automatically. The housekeeping branch was still pushed; enable Actions pull-request creation in repository settings if desired."
+          fi
