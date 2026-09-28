@@ -14,13 +14,14 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
 ]
 
-[project.urls]
-Repository = "https://github.com/ayyararyan/shaurya"
 dependencies = [
   "numpy>=2.0,<2.3",
   "scipy>=1.14,<2",
   "shaurya-data>=0.2.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/ayyararyan/shaurya"
 
 [project.optional-dependencies]
 dev = [
