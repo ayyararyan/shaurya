@@ -260,7 +260,7 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Override the capture root for a controlled test. By default DAT writes to "
-            "/Volumes/Aryan/NSE/YYYY-MM-DD/raw after verifying the SMB mount."
+            "the configured SHAURYA_NSE_ARCHIVE_ROOT after archive validation."
         ),
     )
     parser.add_argument(
