@@ -1,21 +1,29 @@
-# Catalogue maintenance tools
+# Catalogue Maintenance Tools
 
-`catalogue.py` keeps mechanical inventory separate from human interpretation. It never edits
-`HYPOTHESES.md`, `hypotheses.csv`, `features.csv`, `test_traceability.csv`, methodology files, or
-researcher decisions.
+The tools in this directory validate and update the mechanical parts of the hypothesis/feature catalogue. They do not invent hypotheses, feature meanings, economic rationales, or evidence conclusions.
 
-From the repository root:
+Run from the repository root:
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 research/hypothesis_feature_research/tools/catalogue.py --check
 PYTHONDONTWRITEBYTECODE=1 python3 research/hypothesis_feature_research/tools/catalogue.py --update-inventory
 ```
 
-`--check` validates exact CSV headers/shape/UTF-8, nonempty required cells, stable ID syntax and
-uniqueness, statement-basis labels, cross-references, repository paths, feature-data artifact IDs
-and integrity metadata, allowed statuses, recursive coverage of `research/tests`, and whether the
-checked-in inventory is current. `--update-inventory` changes only `test_inventory.csv`, using
-deterministic path order and content hashes; it avoids a rewrite when bytes are unchanged.
+## `--check`
 
-The tool intentionally does not parse source code to invent feature formulae, rationales,
-hypotheses, or evidence conclusions. Those fields require review of code and evidence by a human.
+The validator checks, among other things:
+
+- exact CSV shape and UTF-8 parsing;
+- required fields and stable-ID syntax;
+- uniqueness and cross-references;
+- allowed implementation/evidence statuses;
+- repository paths;
+- feature-data integrity metadata;
+- recursive coverage of `research/tests`; and
+- whether the checked-in test inventory matches the source tree.
+
+## `--update-inventory`
+
+This mode updates only the deterministic test inventory. It uses stable path order and content hashes and avoids rewriting the file when the bytes would be unchanged.
+
+Human-maintained hypothesis, feature, traceability, methodology, and evidence interpretations remain untouched.
