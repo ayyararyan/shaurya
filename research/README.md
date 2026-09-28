@@ -1,106 +1,103 @@
 # Shaurya Research
 
-Shaurya Research is the independently installable analysis project. It contains order-book and
-OFI features, volatility surfaces, correlations, predictive tests, walk-forward experiments,
-research dashboards, daily pipelines, and persisted research evidence. Its only market-data
-dependency is the public catalogue and replay interface supplied by Shaurya Data.
+Shaurya Research is the independently installable analysis component of Shaurya. It contains market-microstructure features, volatility-surface tooling, predictive experiments, walk-forward evaluation, research dashboards, daily pipelines, and persistent research evidence.
 
-It contains no broker connectivity, order placement, execution engine, or live-trading strategy.
+**Distribution:** `shaurya-research`  
+**Python:** 3.11+  
+**Market-data dependency:** the public catalogue/access interface supplied by `shaurya-data`
+
+Shaurya Research has no broker connectivity, order-placement authority, or live execution engine.
 
 ## Install and test
 
-From the repository root, enter the Research project before running its tools so test discovery
-and relative script imports stay scoped to Research:
+From a source checkout:
 
 ```bash
 cd research
 uv sync --extra dev
+uv run ruff check .
+uv run mypy
 uv run pytest
 ```
 
-The sibling `data/` project is installed through Research's declared `shaurya-data` dependency;
-the Dhan collector is not imported by Research.
+The source workspace resolves the sibling Data project through Research's declared development source. Official release artifacts declare `shaurya-data` as a normal package dependency.
 
-## Run research for a dataset or date
-
-The quality-aware daily pipeline waits for a completed catalogue handle, verifies lifecycle,
-schema, hashes, ordered logical replay, and coverage through `DataAccess`, then writes its report
-and machine-readable results to the requested output directory. Research does not open Parquet or
-legacy JSONL paths directly:
+Build the package with:
 
 ```bash
-uv run shaurya-daily-research \
-  --catalog /archive/NSE/2026-08-26/metadata/datasets \
-  --dataset-id ds-example \
-  --output-root /absolute/path/to/research-results
+uv build
 ```
 
-To resolve the latest completed dataset for a trading date through the same catalogue interface:
+## Daily research pipeline
+
+Run the quality-aware post-close pipeline against a completed Data catalogue handle:
 
 ```bash
-uv run shaurya-daily-research \
-  --catalog /archive/NSE/2026-08-26/metadata/datasets \
+shaurya-daily-research \
+  --catalog /path/to/datasets \
   --date 2026-08-26 \
-  --output-root /absolute/path/to/research-results
+  --output-root /path/to/research-output
 ```
 
-The generated `FINAL_MEMO.md` is the daily report. Existing focused commands remain available,
-including `shaurya-ofi-dashboard`, `shaurya-surface-dashboard`,
-`shaurya-live-ofi-studies`, `shaurya-rolling-c8`, and
-`shaurya-feature-selection-experiment`; use each command's `--help` for its exact inputs.
-
-For the evolving eSSVI surface, attach to an active option-chain dataset with the true DAT live
-transport:
+Or pin an exact dataset:
 
 ```bash
-uv run shaurya-surface-dashboard \
-  --mode live \
-  --dataset-id sha-... \
-  --underlying NIFTY \
-  --expiry 2026-09-08 \
-  --expiry 2026-09-29
+shaurya-daily-research \
+  --catalog /path/to/datasets \
+  --dataset-id ds-example \
+  --output-root /path/to/research-output
 ```
 
-`live` (also spelled `stream`) consumes DAT's authenticated localhost row fan-out and fits only
-when new input has arrived, on a three-second default clock. `follow` remains available for
-closed-segment monitoring and therefore advances in storage-publication batches. A shared
-NIFTY/BANKNIFTY dataset is filtered by `--underlying` before forward selection or calibration.
+The pipeline validates lifecycle, schema, hashes, ordered replay, and domain coverage through `DataAccess` before producing `FINAL_MEMO.md` and machine-readable result artifacts.
 
-Curated research provenance lives under `docs/results/`. Large or local generated artifacts must
-remain outside Git.
+## Installed commands
 
-Historical scripts that deliberately pin immutable JSONL evidence remain supported through the
-legacy compatibility lane and retain their original provenance. Current capture, dashboards,
-rolling studies, post-close research, and full-session OFI orchestration resolve dataset IDs and
-consume format-neutral logical rows. A passing storage/software test is not evidence that a market
-session is complete; the completed catalogue state and the pipeline's domain coverage gates are
-both required.
+| Command | Purpose |
+|---|---|
+| `shaurya-research` | Hypothesis, evidence, and walk-forward research tooling |
+| `shaurya-daily-research` | Daily post-close research pipeline |
+| `shaurya-ofi-dashboard` | Order-flow-imbalance research dashboard |
+| `shaurya-surface-dashboard` | Implied-volatility surface dashboard |
+| `shaurya-live-ofi-studies` | Focused live/read-only OFI studies |
+| `shaurya-rolling-c8` | Rolling C8 study runner |
+| `shaurya-feature-selection-experiment` | Feature-selection experiment runner |
 
-## High-frequency v2 registry bundle
+Use `--help` on each command for the current contract.
 
-`HIGH_FREQUENCY_REGISTRY_BINDING` binds `microstructure_features_v2`,
-`microstructure_targets_v2`, `alpha_hypotheses_v2`, and `alpha_research_policy_v2`, frozen for the
-2026-08-27 construction and now the only registry bundle: it is the default for every CLI command
-and the `daily` orchestration. The legacy `v1` registries and binding have been removed. The v2
-policy keeps three-session candidates in shadow status and quarantines the
-non-transportable/replication-only fields from automatic live weight.
+Additional bounded research scripts live under `scripts/`; they are not installed console commands.
 
-## Prospective daily hypothesis testing
+## Data boundary
 
-The registry-driven evidence engine can now discover completed catalogue sources automatically and
-run one unseen session with the exact plan/state frozen before that session:
+Current research pipelines consume logical rows and dataset identities through Shaurya Data. Research should not discover raw capture directories, open broker connections, or treat a local file path as a substitute for a verified dataset lifecycle.
 
-```bash
-uv run shaurya-research daily \
-  --date 2026-08-28 \
-  --next-session 2026-08-31 \
-  --catalog /archive/NSE/metadata/datasets
-```
+Historical experiments that deliberately pin older evidence remain reproducible through documented compatibility paths. Their existence does not relax the boundary for new work.
 
-On a fresh research workspace the command creates the first content-addressed plan and pre-session
-state from completed data strictly before `--date`.  After evidence exists it reuses the plan hash
-bound into the immutable state; it will not silently re-plan from the evaluation day.  Source
-handles no longer need to be enumerated manually.
+## Research integrity
 
-See `docs/DAILY-AUTOMATION.md` for the orchestration contract and the current v2 construction
-boundary.
+Shaurya separates:
+
+- software correctness from empirical evidence;
+- exploratory results from confirmatory or identification-grade claims;
+- implementation status from economic support; and
+- current protocols from immutable historical registrations and dated amendments.
+
+A passing test demonstrates software behavior, not profitability or external validity. Pre-registered protocols and their amendments live under [docs/sig-claims/](docs/sig-claims/). The broader hypothesis/feature catalogue lives under [hypothesis_feature_research/](hypothesis_feature_research/).
+
+## Generated output
+
+Large or local generated outputs belong outside Git. Only deliberately curated, reviewable evidence and compact reproducibility artifacts should be committed.
+
+The repository `.gitignore` excludes normal runtime output, caches, and generated research lanes.
+
+## Documentation
+
+- [docs/README.md](docs/README.md) — research documentation index
+- [docs/sig-claims/README.md](docs/sig-claims/README.md) — pre-registration ledger
+- [hypothesis_feature_research/README.md](hypothesis_feature_research/README.md) — hypothesis/feature catalogue
+- [docs/DAILY-AUTOMATION.md](docs/DAILY-AUTOMATION.md) — daily evidence-orchestration contract
+
+## Release and security
+
+The package is built and tested as part of the repository release gate described in [../RELEASING.md](../RELEASING.md). It contains research code and metadata only; credentials, captured market data, runtime state, and private deployment details are not release artifacts.
+
+See [../SECURITY.md](../SECURITY.md).
