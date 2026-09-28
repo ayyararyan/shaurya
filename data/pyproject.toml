@@ -8,6 +8,14 @@ version = "0.2.0"
 description = "Shaurya market-data collection, validation, cataloguing, and replay"
 readme = "README.md"
 requires-python = ">=3.11"
+classifiers = [
+  "Private :: Do Not Upload",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+]
+
+[project.urls]
+Repository = "https://github.com/ayyararyan/shaurya"
 dependencies = [
   "dhanhq>=2.2,<3",
   "numpy>=2.0,<2.3",
