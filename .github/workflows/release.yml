@@ -1,0 +1,331 @@
+name: Release Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - "release/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  data:
+    name: Data package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Validate Data
+        working-directory: data
+        run: |
+          uv sync --frozen --extra dev
+          uv run ruff check .
+          uv run mypy
+          uv run pytest
+
+      - name: Build Data distribution
+        working-directory: data
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/release/data"
+          uv build --out-dir "$GITHUB_WORKSPACE/release/data"
+
+      - name: Upload Data artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: shaurya-data-dist
+          path: release/data/*
+          if-no-files-found: error
+
+  research:
+    name: Research package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Validate Research
+        working-directory: research
+        run: |
+          uv sync --frozen --extra dev
+          uv run ruff check .
+          uv run mypy
+          uv run pytest
+
+      - name: Build Research distribution
+        working-directory: research
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/release/research"
+          uv build --out-dir "$GITHUB_WORKSPACE/release/research"
+
+      - name: Upload Research artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: shaurya-research-dist
+          path: release/research/*
+          if-no-files-found: error
+
+  execution:
+    name: Execution integration and package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare integration build root
+        run: |
+          sudo mkdir -p /private/tmp
+          sudo chmod 1777 /private/tmp
+
+      - name: Validate Execution
+        run: |
+          execution/scripts/validate_integration.sh \
+            --summary /private/tmp/shaurya-integration-summary.json
+
+      - name: Package portable operator
+        run: |
+          out="$RUNNER_TEMP/execution-dist"
+          mkdir -p "$out"
+          commit="$(git rev-parse HEAD)"
+          epoch="$(git show -s --format=%ct HEAD)"
+          execution/ops/package_release.sh \
+            --output-dir "$out" \
+            --version 1.0.0 \
+            --source-epoch "$epoch" \
+            --source-commit "$commit"
+          execution/ops/verify_manifest.sh \
+            "$out/kotak-1.0.0.manifest.json" \
+            "$out/kotak-1.0.0.tar.gz"
+          cp /private/tmp/shaurya-integration-summary.json "$out/"
+
+      - name: Upload Execution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: shaurya-execution-dist
+          path: ${{ runner.temp }}/execution-dist/*
+          if-no-files-found: error
+
+  bundle:
+    name: Assemble and inspect release bundle
+    needs:
+      - data
+      - research
+      - execution
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Data artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: shaurya-data-dist
+          path: release/data
+
+      - name: Download Research artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: shaurya-research-dist
+          path: release/research
+
+      - name: Download Execution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: shaurya-execution-dist
+          path: release/execution
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Smoke-install fresh Python wheels together
+        run: |
+          python -m venv "$RUNNER_TEMP/release-smoke"
+          "$RUNNER_TEMP/release-smoke/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/release-smoke/bin/python" -m pip install \
+            release/data/shaurya_data-*.whl \
+            release/research/shaurya_research-*.whl
+          "$RUNNER_TEMP/release-smoke/bin/python" - <<'PY'
+          import importlib.metadata
+          import shaurya.analytics
+          import shaurya.data
+
+          print("shaurya-data", importlib.metadata.version("shaurya-data"))
+          print("shaurya-research", importlib.metadata.version("shaurya-research"))
+          PY
+
+      - name: Reject private deployment strings in release archives
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import io
+          import tarfile
+          import zipfile
+
+          root = Path("release")
+          forbidden = (
+              b"/Users/",
+              b"/Volumes/Aryan",
+              b"Market-Making-Secrets",
+              b".openclaw",
+              b"172.20.10.38",
+          )
+          hits = []
+
+          def check_bytes(label: str, data: bytes) -> None:
+              for needle in forbidden:
+                  if needle in data:
+                      hits.append((label, needle.decode("utf-8", "replace")))
+
+          for path in sorted(p for p in root.rglob("*") if p.is_file()):
+              raw = path.read_bytes()
+              if zipfile.is_zipfile(io.BytesIO(raw)):
+                  with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+                      for member in archive.infolist():
+                          if not member.is_dir():
+                              check_bytes(f"{path}:{member.filename}", archive.read(member))
+                  continue
+              try:
+                  with tarfile.open(fileobj=io.BytesIO(raw), mode="r:*") as archive:
+                      for member in archive.getmembers():
+                          if member.isfile():
+                              stream = archive.extractfile(member)
+                              if stream is not None:
+                                  check_bytes(f"{path}:{member.name}", stream.read())
+                  continue
+              except tarfile.TarError:
+                  pass
+              check_bytes(str(path), raw)
+
+          if hits:
+              for label, needle in hits:
+                  print(f"forbidden release string {needle!r} in {label}")
+              raise SystemExit(1)
+          print("release archive privacy scan: pass")
+          PY
+
+      - name: Write release metadata and checksums
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          import re
+          import subprocess
+          import tomllib
+
+          def version(path: str) -> str:
+              with open(path, "rb") as fh:
+                  return tomllib.load(fh)["project"]["version"]
+
+          cmake = Path("execution/CMakeLists.txt").read_text(encoding="utf-8")
+          execution = re.search(r"project\(shaurya_execution VERSION ([0-9.]+)", cmake)
+          kotak = Path("execution/ops/kotak").read_text(encoding="utf-8")
+          operator = re.search(r"kotak ([0-9.]+)", kotak)
+          if execution is None or operator is None:
+              raise SystemExit("could not resolve component versions")
+
+          metadata = {
+              "schema_version": "1.0.0",
+              "repository_release": "shaurya-2026.09.29-rc1",
+              "source_commit": subprocess.check_output(
+                  ["git", "rev-parse", "HEAD"], text=True
+              ).strip(),
+              "components": {
+                  "shaurya-data": version("data/pyproject.toml"),
+                  "shaurya-research": version("research/pyproject.toml"),
+                  "shaurya-execution": execution.group(1),
+                  "kotak-operator": operator.group(1),
+              },
+              "release_mode": "research-and-shadow-only",
+          }
+          Path("release/RELEASE-METADATA.json").write_text(
+              json.dumps(metadata, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          (
+            cd release
+            find . -type f ! -name SHA256SUMS -print0 \
+              | sort -z \
+              | xargs -0 sha256sum > SHA256SUMS
+          )
+
+      - name: Upload complete release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: shaurya-release-bundle
+          path: release/**
+          if-no-files-found: error
+
+  draft-release:
+    name: Create draft release candidate
+    needs:
+      - bundle
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: shaurya-2026.09.29-rc1
+    steps:
+      - name: Download release bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: shaurya-release-bundle
+          path: release
+
+      - name: Create release notes
+        run: |
+          cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
+          Shaurya release candidate assembled by the repository release gate.
+
+          This candidate bundles the independently versioned Data, Research, and Execution deliverables from one exact Git commit. The supported Execution build is shadow-only; this release does not contain a live broker-order transport.
+
+          Review RELEASE-METADATA.json and SHA256SUMS before publication. Python distributions are proprietary and marked to prevent accidental public package-index upload.
+          EOF
+
+      - name: Create or refresh draft prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete "$RELEASE_TAG" --yes --cleanup-tag >/dev/null 2>&1 || true
+          mapfile -d '' assets < <(find release -type f -print0 | sort -z)
+          gh release create "$RELEASE_TAG" "${assets[@]}" \
+            --draft \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Shaurya 2026.09.29 RC1" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"

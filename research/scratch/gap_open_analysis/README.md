@@ -1,29 +1,28 @@
-# Gap-open research workspace
+# Gap-Open Research Record
 
-This directory is a committed research record, despite its `scratch/` name. It contains the
-analysis code, frozen test specifications, reports, audits, and compact result files behind the
-gap-open work. Do not bulk-delete or regenerate it as ordinary temporary output.
+This directory is a committed research record despite its `scratch/` location. It contains analysis code, frozen test specifications, reports, audits, and compact result artifacts for the gap-open research programme. It is not disposable temporary output.
 
-## Where to start
+## Start here
 
-- [`FINDINGS_SUMMARY.md`](FINDINGS_SUMMARY.md) summarizes the main findings and their limits.
-- [`GAP_FILL_SIGNAL_MODULE_SPEC.md`](GAP_FILL_SIGNAL_MODULE_SPEC.md) describes the proposed
-  module boundary.
-- `GATE_A_*` covers the gap-fill put and its censoring, stop/target, and walk-forward checks.
-- `GATE_B_*` covers continuation, structure choice, exits, volume/open-interest, and robustness.
-- `FOLKLORE_BATTERY_*`, `NGE_*`, `RANGE_FORECAST_*`, `TAIL_CLIP_*`, and `VRP_*` group the other
-  registered questions and their reports.
+- [`FINDINGS_SUMMARY.md`](FINDINGS_SUMMARY.md) — consolidated findings and limitations
+- [`GAP_FILL_SIGNAL_MODULE_SPEC.md`](GAP_FILL_SIGNAL_MODULE_SPEC.md) — proposed module boundary
+- `GATE_A_*` — gap-fill put, censoring, stop/target, and walk-forward checks
+- `GATE_B_*` — continuation, structure, exits, volume/open-interest, and robustness
+- `FOLKLORE_BATTERY_*`, `NGE_*`, `RANGE_FORECAST_*`, `TAIL_CLIP_*`, and `VRP_*` — other registered research families
 
 ## File conventions
 
-- `*.py` files are analysis or verification code.
-- `*_SPEC.md` and similarly named specification files freeze a question before testing.
-- `*_TEST.md`, research reports, and `FINDINGS_SUMMARY.md` explain results in human-readable form.
-- `*_results.json`, audit JSON, and the retained text outputs are compact reproducibility artifacts.
-- [`gate_b_structure_search.py.orig`](gate_b_structure_search.py.orig) is intentionally retained as
-  the as-received, pre-patch baseline documented in
-  [`GATE_B_STRUCTURE_SEARCH.md`](GATE_B_STRUCTURE_SEARCH.md); it is not an accidental editor backup.
-- `FOLKLORE_BATTERY_RESULTS.md` is an intentional report alias written alongside
-  `FOLKLORE_BATTERY_TEST.md` by `folklore_battery.py`.
+| Pattern | Role |
+|---|---|
+| `*.py` | Analysis or verification code |
+| `*_SPEC.md` | Question/protocol frozen before the corresponding test |
+| `*_TEST.md` and reports | Human-readable results and interpretation |
+| `*_results.json` and audit files | Compact reproducibility artifacts |
 
-Source market data and local model environments are external to this tree and ignored by Git.
+[`gate_b_structure_search.py.orig`](gate_b_structure_search.py.orig) is intentionally retained as the documented pre-patch baseline; it is not an editor backup. `FOLKLORE_BATTERY_RESULTS.md` is an intentional report alias emitted by the corresponding analysis.
+
+Source market data, model environments, caches, and large generated outputs are external to this tree.
+
+## Interpretation
+
+These files preserve the design and sample actually tested. They are research evidence, not a production signal catalogue or a trading-performance claim. Later work should amend or supersede a frozen question explicitly rather than silently rewriting its historical record.

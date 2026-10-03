@@ -8,9 +8,9 @@ security master must exist, the production archive must be mounted and writable,
 spot and expiries, and the selected research chain must contain options for every requested expiry.
 `--launch` always performs that same preflight before creating any tmux window.
 
-`--credentials` and `--security-master` default to this machine's live operational paths but
-stay overridable; `--output-root` overrides where captures land, on top of the archive's own
-`SHAURYA_NSE_ARCHIVE_ROOT` environment override (default `/Volumes/Aryan/NSE`).
+`--credentials` and `--security-master` have portable local defaults and remain overridable;
+`--output-root` overrides where captures land, on top of the archive's
+`SHAURYA_NSE_ARCHIVE_ROOT` environment configuration.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ from shaurya.data_cli.capture_chain import (
 )
 
 DEFAULT_UNDERLYINGS: tuple[str, ...] = ("NIFTY", "BANKNIFTY")
-DEFAULT_CREDENTIALS_PATH = Path.home() / "Documents" / "Market-Making-Secrets" / "dhan.env"
+DEFAULT_CREDENTIALS_PATH = Path.home() / ".config" / "shaurya" / "dhan.env"
 DEFAULT_SECURITY_MASTER_DIR = Path(__file__).resolve().parents[3] / "instrument-masters"
 
 
@@ -355,8 +355,8 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help=(
-            "Override where captures land. Default is the configured NSE archive root "
-            "(/Volumes/Aryan/NSE, or the SHAURYA_NSE_ARCHIVE_ROOT environment override)."
+            "Override where captures land. Default is the configured NSE archive root; "
+            "set SHAURYA_NSE_ARCHIVE_ROOT for deployment-specific storage."
         ),
     )
     parser.add_argument("--tmux-session", default=None)
