@@ -1,3 +1,7 @@
-# Contracts lane
+# Execution Contracts
 
-Versioned wire schemas and conformance fixtures live here. Runtime output is forbidden.
+This directory contains versioned wire schemas, compatibility documentation, and conformance fixtures for Shaurya Execution.
+
+Contract fixtures are synthetic and reviewable. Runtime messages, broker responses, credentials, and session state do not belong here.
+
+Versioned schemas live under [`v1/`](v1/). Contract changes that alter accepted wire semantics require an explicit compatibility decision and corresponding conformance tests.

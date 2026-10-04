@@ -1,60 +1,62 @@
-# SIG claim ledger (D22)
+# SIG Claim Ledger
 
-The pre-registered hypothesis set. `SIG-19`'s trial log is checked against this: anything
-tested must appear here **first**, and any addition is recorded **before** results are
-inspected. Literature seeds claims; it does not settle them (D22, Aryan's qualification).
+This directory is the pre-registration and claim ledger for Shaurya's signal-research programme. Its central rule is chronological: a hypothesis or material protocol change is recorded before the outcomes governed by it are inspected.
 
-## ID scheme
+Literature can motivate a claim; it does not settle the claim.
 
-One file per `SIG-01` taxonomy cell. Claim IDs are `<CELL>-nn`, stable and never reused.
+## Claim IDs
+
+One file is maintained for each `SIG-01` taxonomy cell. Claim IDs use `<CELL>-nn` and are stable once assigned.
 
 | Cell | Prefix | File | SIG task |
 |---|---|---|---|
-| Book state (static) | `BK` | [`book-state.md`](book-state.md) | SIG-02 |
+| Book state | `BK` | [`book-state.md`](book-state.md) | SIG-02 |
 | Event flow | `EF` | [`event-flow.md`](event-flow.md) | SIG-03 |
 | Price-path derived | `PP` | `price-path.md` | SIG-04 |
 | Cross-asset | `XA` | `cross-asset.md` | SIG-05 |
 | Options-specific | `OP` | `options.md` | SIG-06 |
 | Time and regime | `TR` | `time-regime.md` | SIG-16 |
 
-These are distinct from the maker report's `MK-01`–`MK-13` agenda, which are *programme
-gates* (instrumentation, labels, kill tests). A gate says "measure this before anything is
-justified"; a claim says "this proposition is true or false about the market". Claims cite
-the gates they depend on.
+Programme gates and market claims are distinct objects: a gate can require a measurement before inference is justified; a claim states a proposition about market behavior.
 
-## Registered execution hypotheses and their amendments
+## Registered execution hypotheses
 
-`H-*` files are execution registrations: a complete, frozen test protocol committed and pushed
-*before* outcomes are inspected, with the pushed commit acting as the registration clock.
+`H-*` files are frozen execution protocols committed before outcome inspection. Their registering commit is part of the audit trail.
 
 | Registration | File | Registering commit | Status |
 |---|---|---|---|
-| `H-SIG21` — deep-book anomaly to later NIFTY-futures price response | [`H-SIG21.md`](H-SIG21.md) | `f2cf650`, pushed 2026-08-19T15:00:42+05:30 | Active; outcome gate closed |
+| `H-SIG21` — deep-book anomaly to later NIFTY-futures response | [`H-SIG21.md`](H-SIG21.md) | `f2cf650` (2026-08-19) | Active; outcome gate closed |
 
-**A registration body is never edited.** Editing it in place would make the file and its
-registration clock disagree and would destroy the audit trail. Meaning-changing alterations are
-recorded as dated, numbered amendment files beside it and listed here.
+### Amendments
 
-| Amendment | Amends | Approved | Pre-data? | Summary |
-|---|---|---|---|---|
-| [`H-SIG21-A1.md`](H-SIG21-A1.md) (`D34`) | `H-SIG21` §6 | Aryan, 2026-08-19 ~17:40 IST | **Yes** — zero of the 25 required post-registration sessions collected | The primary non-overlapping episode window is bound to each cell's own `Z + h2` instead of the 11 s family maximum. The family-maximum window is retained as a declared robustness arm. The matched-quiet-control definition is deliberately **not** changed and remains open. |
-| [`H-SIG21-A2.md`](H-SIG21-A2.md) | `H-SIG21` full-session calendar and derived ceilings | Official dated-calendar correction, 2026-08-19 | **Yes** — zero of the 25 required post-registration sessions collected | The NSE F&O close is date-versioned: 15:30 before 2026-08-03 and 15:40 from that date. A current session is 23,100 seconds, giving 11-second ceilings of 2,100 / 10,500 / 42,000. Registered 30-minute bins retain a short 15:30–15:40 final bin. |
+A registration body is never edited in place after registration. Meaning-changing corrections are recorded as dated, numbered amendments.
 
-## Method
+| Amendment | Amends | Timing | Summary |
+|---|---|---|---|
+| [`H-SIG21-A1.md`](H-SIG21-A1.md) | `H-SIG21` §6 | Pre-data | Primary non-overlap window changed to each cell's own `Z + h2`; family-maximum window retained as robustness |
+| [`H-SIG21-A2.md`](H-SIG21-A2.md) | Session calendar/derived ceilings | Pre-data | Corrected the date-versioned NSE F&O close and derived session ceilings |
 
-**`METHOD.md` is binding on all of SIG under `D29`**, not just this ledger. It defines the claim →
-hypothesis → trial-log chain, the eight measurement axes every hypothesis must bind, the
-mandatory resolution statement, ex-ante power requirements, the verdict vocabulary, and
-pre-registration by commit order. Read it before adding or testing anything.
+The amendment files contain the full approval and timing evidence.
 
-## Required fields per claim
+## Binding method
 
-Per D22, every claim records: **mechanism** (why it would move prices, not that it
-correlates), **resolved citations**, **capture path** from our own feed, **confirming
-test**, **falsifying test**, and **`CON-06` identification status**.
+[`METHOD.md`](METHOD.md) governs claim registration, hypotheses, trial logs, measurement axes, resolution statements, power requirements, verdict vocabulary, and commit-order pre-registration.
+
+Read it before adding or testing a claim.
+
+## Required fields
+
+Each claim records:
+
+- economic or microstructure mechanism;
+- resolved citations;
+- observable capture path;
+- confirming test;
+- falsifying test; and
+- identification status under the relevant contract.
 
 ## Status vocabulary
 
-`Proposed` (drafted, not yet debated with Aryan) → `Agreed` (debated and accepted into the
-pre-registered set) → `Tested` (a `SIG-19` trial log entry exists) → `Confirmed` /
-`Falsified` / `Inconclusive`. A claim is never deleted; it is falsified and kept.
+`Proposed` → `Agreed` → `Tested` → `Confirmed` / `Falsified` / `Inconclusive`.
+
+Claims are retained after testing. Falsification changes status; it does not erase the registered record.

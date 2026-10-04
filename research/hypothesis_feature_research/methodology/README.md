@@ -1,6 +1,6 @@
-# Methodology index
+# Methodology Index
 
-These documents group tests by research question rather than by filename:
+These documents organize Shaurya Research by research question rather than source filename.
 
 - [Research integrity](research-integrity.md)
 - [Data quality](data-quality.md)
@@ -13,7 +13,6 @@ These documents group tests by research question rather than by filename:
 - [Infrastructure and contracts](infrastructure.md)
 - [High-frequency construction freeze](high-frequency-constructions.md)
 
-Each file records source entry points, lineage, formula/meaning, timing/leakage controls,
-experimental procedure, interpretation, edge cases, limitations, bounded reproduction, and
-researcher decisions. Exact per-feature metadata remains canonical in `../features.csv`; exact
-file coverage remains canonical in `../test_traceability.csv`.
+Each methodology document records the relevant source entry points, lineage, formula/meaning, timing and leakage controls, experimental procedure, interpretation limits, edge cases, bounded reproduction, and unresolved researcher decisions.
+
+Canonical per-feature metadata remains in [`../features.csv`](../features.csv); canonical test coverage remains in [`../test_traceability.csv`](../test_traceability.csv).

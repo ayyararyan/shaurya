@@ -8,11 +8,20 @@ version = "0.2.0"
 description = "Shaurya feature engineering, statistical research, and daily reports"
 readme = "README.md"
 requires-python = ">=3.11"
+classifiers = [
+  "Private :: Do Not Upload",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+]
+
 dependencies = [
   "numpy>=2.0,<2.3",
   "scipy>=1.14,<2",
   "shaurya-data>=0.2.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/ayyararyan/shaurya"
 
 [project.optional-dependencies]
 dev = [

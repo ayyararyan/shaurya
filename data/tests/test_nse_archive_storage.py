@@ -12,6 +12,7 @@ from shaurya.data.storage import (
     DEFAULT_NSE_ARCHIVE_MOUNT,
     DEFAULT_NSE_ARCHIVE_ROOT,
     EXPECTED_NSE_ARCHIVE_SHARE,
+    NSE_ARCHIVE_MOUNT_ENV,
     NSE_ARCHIVE_ROOT_ENV,
     NSEArchiveLayout,
     NSEArchiveUnavailableError,
@@ -114,10 +115,20 @@ def test_missing_smb_mount_refuses_local_fallback(monkeypatch: pytest.MonkeyPatc
         storage._verify_default_smb_mount()
 
 
-def test_production_constants_bind_the_iex_server_share() -> None:
-    assert Path("/Volumes/Aryan") == DEFAULT_NSE_ARCHIVE_MOUNT
-    assert Path("/Volumes/Aryan/NSE") == DEFAULT_NSE_ARCHIVE_ROOT
-    assert EXPECTED_NSE_ARCHIVE_SHARE == "//Aryan@172.20.10.38/Aryan"
+def test_default_archive_constants_are_portable_and_non_secret() -> None:
+    assert DEFAULT_NSE_ARCHIVE_ROOT.is_absolute()
+    assert DEFAULT_NSE_ARCHIVE_MOUNT.is_absolute()
+    assert "Aryan" not in str(DEFAULT_NSE_ARCHIVE_ROOT)
+    assert EXPECTED_NSE_ARCHIVE_SHARE == ""
+
+
+def test_explicit_mount_configuration_remains_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(NSE_ARCHIVE_MOUNT_ENV, str(tmp_path / "missing-mount"))
+    monkeypatch.setattr(Path, "is_mount", lambda _path: False)
+    with pytest.raises(NSEArchiveUnavailableError, match="refusing local fallback"):
+        storage._verify_default_smb_mount()
 
 
 @pytest.mark.parametrize("parser_factory", [dhan_parser, chain_parser])
