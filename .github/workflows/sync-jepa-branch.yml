@@ -45,11 +45,13 @@ jobs:
       - name: Open PR if conflicted
         if: steps.merge.outputs.clean == 'false'
         run: |
-          git fetch origin main
-          git checkout -b sync/main-into-jepa-$(date +%Y%m%d)
-          git push origin HEAD
-          gh pr create --base shaurya_28-08-2026_JEPA --head sync/main-into-jepa-$(date +%Y%m%d) \
-            --title "Sync main into JEPA branch (conflicts, needs manual merge)" \
-            --body "Auto-sync detected conflicts merging main into shaurya_28-08-2026_JEPA. Resolve manually."
+          existing=$(gh pr list --base shaurya_28-08-2026_JEPA --head main --state open --json url --jq '.[0].url // empty')
+          if [ -n "$existing" ]; then
+            printf 'Existing conflict-resolution PR: %s\n' "$existing"
+          else
+            gh pr create --base shaurya_28-08-2026_JEPA --head main \
+              --title "Sync main into JEPA branch (conflicts, needs manual merge)" \
+              --body "Auto-sync detected conflicts merging main into shaurya_28-08-2026_JEPA. Resolve manually. No research conflicts were automatically resolved."
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
